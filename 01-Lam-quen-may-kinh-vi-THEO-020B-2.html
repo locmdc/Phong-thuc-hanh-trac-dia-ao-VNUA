@@ -1,0 +1,1328 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Máy kinh vĩ 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: full-height 3D stage on the left, instrument control panel on the right (stacks below on phones) */
+:root{
+  --bg:#eef1f3; --panel:#ffffff; --ink:#1b2328; --muted:#5a6670; --line:#d6dce1;
+  --accent:#0d6a87; --chip:#f1f4f6; --yellow:#e5bd1c;
+  --stage:#cdd6dc; --floor:#b9c3ca;
+  --f-display:"Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11161a; --panel:#172027; --ink:#e5eaed; --muted:#93a1ab; --line:#29343c;
+    --accent:#5cc0de; --chip:#1f2a32; --yellow:#e5bd1c;
+    --stage:#1b2329; --floor:#222c33; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11161a; --panel:#172027; --ink:#e5eaed; --muted:#93a1ab; --line:#29343c;
+  --accent:#5cc0de; --chip:#1f2a32; --yellow:#e5bd1c;
+  --stage:#1b2329; --floor:#222c33; color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;overflow:hidden}
+.app{height:100%;display:grid;grid-template-columns:minmax(0,1fr) 360px}
+.stage{position:relative;min-width:0;min-height:0;background:var(--stage)}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+.hint{position:absolute;left:max(14px, env(safe-area-inset-left,0px));bottom:12px;font-size:12px;color:var(--muted);
+  background:color-mix(in srgb,var(--panel) 80%,transparent);padding:5px 10px;border-radius:6px;pointer-events:none}
+.tag{position:absolute;pointer-events:none;transform:translate(-50%,-130%);background:var(--ink);color:var(--bg);
+  font-size:12px;font-weight:600;padding:4px 9px;border-radius:5px;white-space:nowrap}
+aside{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;min-height:0;
+  padding-block:22px 28px;padding-left:max(20px, env(safe-area-inset-left,0px));padding-right:max(20px, env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:20px}
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.brand{display:flex;align-items:center;gap:14px}
+.brand img{width:72px;height:72px;flex:none;border-radius:50%;background:#fff}
+.brand > div{min-width:0}
+h1{font-family:var(--f-display);font-size:24px;line-height:1.2;font-weight:700;margin:4px 0 0;text-wrap:balance}
+.read{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.read div{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.read small{display:block;font-size:11px;color:var(--muted);letter-spacing:.04em}
+.read div.off{opacity:.38}
+.read div.off b{filter:blur(1.5px)}
+.scale-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.scale-row p{margin:0;font-size:12px;color:var(--muted);flex:1 1 160px}
+.read b{font-family:var(--f-mono);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.ctl{display:flex;flex-direction:column;gap:14px}
+.ctl label{display:flex;justify-content:space-between;font-size:13px;font-weight:500}
+.ctl label span{color:var(--muted);font-weight:400;font-size:12px}
+input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 0}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-size:13px;font-weight:500;color:var(--ink);background:var(--chip);border:1px solid var(--line);
+  border-radius:7px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.info{border-top:3px solid var(--yellow);background:var(--chip);border-radius:0 0 8px 8px;padding:12px 14px;min-height:92px}
+.info h2{font-size:16px;margin:0 0 4px;font-weight:700}
+.info p{margin:0;color:var(--muted)}
+.parts{display:flex;flex-wrap:wrap;gap:6px}
+.parts button{font-size:12px;padding:4px 9px;border-radius:999px}
+.parts button.on{background:var(--yellow);border-color:var(--yellow);color:#1b2328}
+.sec{display:flex;flex-direction:column;gap:8px}
+.scope{position:absolute;z-index:2;top:max(12px, env(safe-area-inset-top,0px));right:max(12px, env(safe-area-inset-right,0px));width:min(160px, 42%);
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:7px;display:flex;flex-direction:column;gap:5px;
+  box-shadow:0 8px 28px rgba(0,0,0,.25)}
+.scope-head{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;line-height:1.25}
+.scope-head button{padding:0 7px;font-size:15px;line-height:22px;flex:none}
+.scope canvas{width:100%;height:auto;aspect-ratio:1;display:block;cursor:zoom-in}
+.scope.big{width:min(320px, 80%)}
+.scope.big canvas{cursor:zoom-out}
+.scope p{margin:0;font-size:10.5px;color:var(--muted);line-height:1.35}
+.steprow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin-top:6px}
+.steprow button{padding:4px 0;font-size:11.5px;font-variant-numeric:tabular-nums}
+.steprow button:disabled{opacity:.4;cursor:not-allowed}
+.lockrow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:6px}
+.lockrow > button{font-size:12px;padding:5px 10px}
+.fine{display:inline-flex;align-items:center;gap:6px}
+.fine small{font-size:11px;color:var(--muted)}
+.fine button{padding:4px 10px;font-size:12px}
+input[type=range]:disabled{opacity:.4}
+.meter{display:flex;flex-direction:column;gap:6px}
+.meter-bar{height:8px;border-radius:4px;background:var(--chip);border:1px solid var(--line);overflow:hidden}
+.meter-bar i{display:block;height:100%;width:0;background:var(--yellow);transition:width .15s}
+.meter p{margin:0;font-size:12px;color:var(--muted)}
+.meter button{align-self:flex-start;font-size:12px;padding:5px 10px}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr;grid-template-rows:56% 44%}
+  aside{border-left:0;border-top:1px solid var(--line);padding-block:16px 24px;gap:16px}
+  h1{font-size:20px}
+}
+
+body{margin:0}*,*::before,*::after{box-sizing:border-box}[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <div class="hint">Kéo để xoay · cuộn hoặc chụm để phóng to · chạm vào bộ phận để xem tên</div>
+    <div class="tag" id="tag" hidden></div>
+    <div class="scope" id="scope" hidden role="dialog" aria-labelledby="scopeTitle">
+      <div class="scope-head"><b id="scopeTitle">Thị kính</b><button id="scopeClose" type="button" aria-label="Đóng">×</button></div>
+      <canvas id="scopeCv" width="600" height="600"></canvas>
+      <p id="scopeNote"></p>
+    </div>
+  </div>
+  <aside>
+    <header class="brand">
+      <img src="data:image/webp;base64,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" alt="Logo geoVNUA Lab" width="72" height="72">
+      <div>
+        <div class="eyebrow">Phòng thực hành trắc địa ảo</div>
+        <h1>Máy kinh vĩ quang học</h1>
+      </div>
+    </header>
+
+    <div class="sec">
+      <div class="read" aria-live="polite">
+        <div id="hzBox"><small>Hướng ngang Hz</small><b id="hzOut">0°00′00″</b></div>
+        <div id="vBox" class="off"><small>Góc thiên đỉnh V</small><b id="vOut">90°00′00″</b></div>
+      </div>
+      <div class="scale-row">
+        <p id="scaleTxt">Kính đọc số chỉ hiện thang Hz.</p>
+        <button id="scaleBtn" type="button">Xoay núm tới V</button>
+      </div>
+    </div>
+
+    <div class="ctl">
+      <div>
+        <label for="hz">Quay máy <span>quanh trục VV</span></label>
+        <input id="hz" type="range" min="0" max="360" step="any" value="0">
+        <div class="steprow" id="hzStep"><button type="button" data-d="-60">−1°</button><button type="button" data-d="-1">−1′</button><button type="button" data-d="-0.1">−6″</button><button type="button" data-d="0.1">+6″</button><button type="button" data-d="1">+1′</button><button type="button" data-d="60">+1°</button></div>
+        <div class="lockrow">
+          <button id="hzLockBtn" type="button" aria-pressed="false">Khóa máy: đang mở</button>
+          <span class="fine" id="hzFine" hidden><button type="button" data-d="-1" aria-label="Vi động ngang trái">◀</button><small>Vi động ngang</small><button type="button" data-d="1" aria-label="Vi động ngang phải">▶</button></span>
+        </div>
+      </div>
+      <div>
+        <label for="vz">Quay ống kính <span>quanh trục HH</span></label>
+        <input id="vz" type="range" min="0" max="360" step="any" value="90">
+        <div class="steprow" id="vStep"><button type="button" data-d="-60">−1°</button><button type="button" data-d="-1">−1′</button><button type="button" data-d="-0.1">−6″</button><button type="button" data-d="0.1">+6″</button><button type="button" data-d="1">+1′</button><button type="button" data-d="60">+1°</button></div>
+        <div class="lockrow">
+          <button id="vLockBtn" type="button" aria-pressed="false">Khóa ống kính: đang mở</button>
+          <span class="fine" id="vFine" hidden><button type="button" data-d="-1" aria-label="Vi động đứng lên">▲</button><small>Vi động đứng</small><button type="button" data-d="1" aria-label="Vi động đứng xuống">▼</button></span>
+        </div>
+      </div>
+      <div class="btns">
+        <button id="spinVV" aria-pressed="false">Quay liên tục quanh VV</button>
+        <button id="spinHH" aria-pressed="false">Quay liên tục quanh HH</button>
+        <button id="spinBtn" aria-pressed="false">Tự xoay cảnh</button>
+        <button id="resetBtn">Góc nhìn ban đầu</button>
+      </div>
+    </div>
+
+    <div class="ctl" aria-labelledby="mirLbl">
+      <div class="eyebrow" id="mirLbl">Gương lấy sáng</div>
+      <div>
+        <label for="mOpen">Mở nắp gương <span id="mOpenOut">112°</span></label>
+        <input id="mOpen" type="range" min="0" max="170" step="1" value="112">
+      </div>
+      <div>
+        <label for="mSpin">Xoay gương <span id="mSpinOut">0°</span></label>
+        <input id="mSpin" type="range" min="-180" max="180" step="1" value="0">
+      </div>
+      <div class="meter">
+        <div class="meter-bar"><i id="lightBar"></i></div>
+        <p id="lightTxt">Ánh sáng vào bàn độ: 0%</p>
+        <button type="button" id="lampBtn" aria-pressed="false">Bật đèn chiếu sáng bàn độ</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="eyebrow">Nhìn qua kính</div>
+      <div class="btns">
+        <button type="button" data-scope="eye" aria-pressed="false">Thị kính</button>
+        <button type="button" data-scope="read" aria-pressed="false">Kính đọc số</button>
+        <button type="button" data-scope="plumb" aria-pressed="false">Kính dọi tâm</button>
+        <button type="button" id="roughAim">Ngắm sơ bộ</button>
+      </div>
+    </div>
+
+    <div class="info" id="info">
+      <h2>Chọn một bộ phận</h2>
+      <p>Chạm vào máy hoặc chọn tên bên dưới để xem bộ phận đó dùng làm gì.</p>
+    </div>
+
+    <div class="sec">
+      <div class="eyebrow">Các bộ phận</div>
+      <div class="parts" id="parts"></div>
+    </div>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const PARTS = {
+  telescope:{n:"Ống kính", d:"Quay quanh trục ngang để ngắm mục tiêu. Kết hợp với quay phần trên máy để hướng tới bất kỳ điểm nào."},
+  objective:{n:"Kính vật", d:"Thấu kính phía trước ống kính, thu ảnh của mục tiêu."},
+  focus:{n:"Vòng điều quang", d:"Vặn để ảnh mục tiêu hiện rõ, khử thị sai với lưới chữ thập."},
+  eyepiece:{n:"Thị kính", d:"Vặn để nhìn rõ dây chữ thập. Bấm vào thị kính để xem trường ngắm của ống kính."},
+  finder:{n:"Kính ngắm sơ bộ", d:"Dùng để hướng nhanh ống kính về phía mục tiêu trước khi ngắm chính xác. Bấm vào kính để ngắm sơ bộ tiêu A, sau đó khóa máy, khóa ống kính và dùng vi động."},
+  microscope:{n:"Kính hiển vi đọc số", d:"Nhìn vào để đọc số bàn độ. Bấm vào kính để xem thang Hz, và cả thang V khi chấm trắng chỉ vào chữ V."},
+  vcircle:{n:"Hộp bàn độ đứng", d:"Chứa bàn độ đứng dùng để đo góc thiên đỉnh hoặc góc nghiêng."},
+  mirror:{n:"Gương lấy sáng", d:"Mở nắp và xoay gương cho tia sáng phản xạ đi vào cửa sổ bàn độ. Không đủ sáng thì vạch bàn độ trong kính đọc số sẽ tối. Dùng mục Gương lấy sáng ở bảng bên để thử."},
+  handle:{n:"Quai xách", d:"Tay cầm nối hai giá đỡ, dùng khi nhấc máy ra khỏi hộp hoặc đặt lên chân máy."},
+  standard:{n:"Giá đỡ ống kính", d:"Hai trụ đỡ trục quay ngang của ống kính."},
+  telclamp:{n:"Khóa ống kính", d:"Hai cần phía trên núm đen. Khóa lại thì ống kính không quay lên xuống quanh trục HH được, chỉ còn vi động đứng để chỉnh nhỏ. Bấm vào cần để khóa hoặc mở."},
+  hzlock:{n:"Khóa máy", d:"Hai cần phía dưới núm đen. Khóa lại thì máy không quay trái phải quanh trục VV được, chỉ còn vi động ngang để chỉnh nhỏ. Bấm vào cần để khóa hoặc mở."},
+  selector:{n:"Núm chuyển thang đọc Hz/V", d:"Xoay chấm trắng trên núm tới chữ V khắc trên thân máy thì kính đọc số hiện cả thang Hz và thang V. Ở vị trí khác chỉ thấy thang Hz. Bấm vào núm để chuyển."},
+  tubelevel:{n:"Ống thủy dài", d:"Cân bằng chính xác. Bọt nằm giữa các vạch khắc ở mọi hướng thì trục đứng của máy thẳng đứng."},
+  circlevel:{n:"Ống thủy tròn", d:"Cân bằng sơ bộ bằng cách điều chỉnh độ dài chân máy hoặc ốc cân máy."},
+  adjscrew:{n:"Vít hiệu chỉnh ống thủy", d:"Chỉ dùng khi kiểm nghiệm và hiệu chỉnh máy, không vặn trong lúc đo."},
+  alidade:{n:"Thân máy", d:"Phần quay quanh trục đứng, mang bàn độ ngang, giá đỡ và ống kính."},
+  hzclamp:{n:"Khóa bàn độ ngang", d:"Gạt để khóa hoặc nhả bàn độ ngang khi cần đặt số đọc ban đầu, ví dụ 0°00′00″."},
+  hztangent:{n:"Vi động đứng và vi động ngang", d:"Sau khi đã khóa, vặn vi động ngang để dây đứng trùng mục tiêu và vi động đứng để dây ngang cắt đúng mục tiêu."},
+  nameplate:{n:"Nhãn máy THEO 020B", d:"Ghi kiểu máy: máy kinh vĩ quang học THEO 020B của hãng Carl Zeiss Jena."},
+  plummet:{n:"Kính dọi tâm quang học", d:"Nhìn qua để đưa tâm máy trùng với tâm mốc trên mặt đất. Bấm vào kính để xem hình ảnh dọi tâm."},
+  tribrach:{n:"Đế máy", d:"Bàn đế ba góc nối thân máy với chân máy."},
+  footscrew:{n:"Ốc cân máy", d:"Ba ốc dùng để cân bằng: xoay hai ốc ngược chiều nhau để đưa bọt thủy dài vào giữa, rồi chỉnh ốc thứ ba."},
+  lock:{n:"Khóa đế máy", d:"Giữ thân máy gắn chặt vào đế. Không mở khóa khi đang đo."},
+  baseplate:{n:"Tấm đế", d:"Tấm đáy tì lên đầu chân máy, có lỗ ren cho ốc nối tâm."},
+  tripod:{n:"Chân máy", d:"Chân nhôm ba chân, nới khóa ở mỗi chân để chỉnh độ cao. Đạp bàn đạp cho mũi chân cắm chắc xuống đất, giữ mặt đầu chân máy tương đối nằm ngang."},
+  target:{n:"Tiêu ngắm A", d:"Tiêu tròn bốn góc phần tư đỏ và trắng, lắp trên giá chữ U màu đen và cọc gỗ. Vị trí tiêu đổi ngẫu nhiên mỗi lần mở trang. Nhìn qua thị kính để đưa dây chữ thập vào tâm tiêu, nơi bốn góc phần tư gặp nhau."},
+  benchmark:{n:"Mốc tọa độ", d:"Điểm khống chế đã biết tọa độ, tâm là dấu chữ thập trên đầu mốc. Dùng kính dọi tâm để đưa tâm máy thẳng đứng trên tâm mốc."}
+};
+
+const C = THREE;
+const lin = h => new C.Color(h).convertSRGBToLinear();
+const KIND = {
+  yellow:{color:0xe3bb1a, roughness:.48, metalness:.05},
+  black:{color:0x2a2d30, roughness:.62, metalness:.05},
+  silver:{color:0xd9dde1, roughness:.22, metalness:.95},
+  steel:{color:0xa9b0b6, roughness:.35, metalness:.9},
+  red:{color:0xc8202b, roughness:.5, metalness:.02},
+  grey:{color:0x6d757c, roughness:.4, metalness:.7},
+  glass:{color:0x0f1d26, roughness:.05, metalness:.4},
+  mirror:{color:0xeef3f6, roughness:.03, metalness:1},
+  wood:{color:0x7a6a4a, roughness:.85, metalness:0},
+  white:{color:0xf4f4f0, roughness:.4, metalness:0},
+  alu:{color:0xc8cdd2, roughness:.32, metalness:.85},
+  concrete:{color:0x9b9a93, roughness:.95, metalness:0},
+  lens:{color:0x0c171d, roughness:.02, metalness:.55},
+  bubble:{color:0x8fe3ff, roughness:.05, metalness:0, emissive:0x1d6f88},
+  vial:{color:0xa9c9b8, roughness:.08, metalness:.1},
+  hole:{color:0x111315, roughness:.9, metalness:0}
+};
+const matCache = {};
+function M(kind, part){
+  const k = part+"/"+kind;
+  if(!matCache[k]){
+    const s = KIND[kind];
+    matCache[k] = new C.MeshStandardMaterial({color:lin(s.color), roughness:s.roughness, metalness:s.metalness});
+    if(s.emissive){ matCache[k].userData.base = lin(s.emissive); matCache[k].emissive.copy(matCache[k].userData.base); }
+    if(kind==="glass"){ matCache[k].envMapIntensity = 1.6; }
+    if(kind==="lens"){ matCache[k].envMapIntensity = 2.6; }
+    (PARTS[part].mats = PARTS[part].mats || []).push(matCache[k]);
+  }
+  return matCache[k];
+}
+function add(parent, geo, kind, part, x=0,y=0,z=0, rx=0,ry=0,rz=0){
+  const m = new C.Mesh(geo, M(kind, part));
+  m.position.set(x,y,z); m.rotation.set(rx,ry,rz);
+  m.castShadow = true; m.receiveShadow = true;
+  m.userData.part = part;
+  parent.add(m); return m;
+}
+function cyl(rt, rb, h, seg=48, axis="y"){
+  const g = new C.CylinderGeometry(rt, rb, h, seg);
+  if(axis==="x") g.rotateZ(Math.PI/2);
+  if(axis==="z") g.rotateX(Math.PI/2);
+  return g;
+}
+function box(w,h,d){ return new C.BoxGeometry(w,h,d); }
+function knurl(r, h, teeth, depth=.06, axis="y"){
+  const g = new C.CylinderGeometry(r, r, h, teeth*4, 1);
+  const p = g.attributes.position;
+  for(let i=0;i<p.count;i++){
+    const x=p.getX(i), z=p.getZ(i), rr=Math.hypot(x,z);
+    if(rr>1e-4){
+      const th=Math.atan2(z,x);
+      const f = 1 - depth*(0.5+0.5*Math.cos(teeth*th));
+      p.setX(i, x*f); p.setZ(i, z*f);
+    }
+  }
+  g.computeVertexNormals();
+  if(axis==="x") g.rotateZ(Math.PI/2);
+  if(axis==="z") g.rotateX(Math.PI/2);
+  return g;
+}
+function roundTri(R, rc, depth, bevel=.15){
+  const pts=[0,1,2].map(i=>{const a=Math.PI/2+i*2*Math.PI/3; return new C.Vector2(R*Math.cos(a), R*Math.sin(a));});
+  const s = new C.Shape();
+  pts.forEach((p,i)=>{
+    const prev=pts[(i+2)%3], next=pts[(i+1)%3];
+    const a1=p.clone().add(prev.clone().sub(p).normalize().multiplyScalar(rc));
+    const a2=p.clone().add(next.clone().sub(p).normalize().multiplyScalar(rc));
+    if(i===0) s.moveTo(a1.x,a1.y); else s.lineTo(a1.x,a1.y);
+    s.quadraticCurveTo(p.x,p.y,a2.x,a2.y);
+  });
+  s.closePath();
+  const g = new C.ExtrudeGeometry(s,{depth:depth-2*bevel, bevelEnabled:true, bevelThickness:bevel, bevelSize:bevel, bevelSegments:2, curveSegments:16});
+  g.rotateX(-Math.PI/2); g.translate(0,bevel,0);
+  return g;
+}
+/* corner i direction in world xz, matching roundTri */
+function cornerDir(i){ const a=Math.PI/2+i*2*Math.PI/3; return [Math.cos(a), -Math.sin(a)]; }
+
+/* ---------- renderer / scene ---------- */
+const host = document.getElementById("stage");
+const renderer = new C.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.outputEncoding = C.sRGBEncoding;
+renderer.toneMapping = C.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = C.PCFSoftShadowMap;
+host.prepend(renderer.domElement);
+renderer.domElement.tabIndex = 0;
+
+const scene = new C.Scene();
+const camera = new C.PerspectiveCamera(38, 1, 2, 4500);
+const HOME = {pos:new C.Vector3(-26, 32, -58), target:new C.Vector3(0, 16, 0)};
+camera.position.copy(HOME.pos);
+
+const controls = new C.OrbitControls(camera, renderer.domElement);
+controls.target.copy(HOME.target);
+controls.enableDamping = true; controls.dampingFactor = .08;
+controls.minDistance = 22; controls.maxDistance = 260;
+controls.maxPolarAngle = Math.PI*0.58;
+controls.autoRotateSpeed = 1.2;
+
+/* environment for metal and glass reflections */
+(function(){
+  const pm = new C.PMREMGenerator(renderer);
+  const env = new C.Scene();
+  const sky = new C.Mesh(new C.SphereGeometry(50,32,16), new C.MeshBasicMaterial({side:C.BackSide, vertexColors:true}));
+  const col=[], p=sky.geometry.attributes.position;
+  for(let i=0;i<p.count;i++){ const t=(p.getY(i)/50+1)/2; const c=new C.Color(0x30363b).lerp(new C.Color(0xc9d6df), Math.pow(t,1.4)); col.push(c.r,c.g,c.b); }
+  sky.geometry.setAttribute("color", new C.Float32BufferAttribute(col,3));
+  env.add(sky);
+  const panel=(w,h,x,y,z,ry,rx)=>{ const m=new C.Mesh(new C.PlaneGeometry(w,h), new C.MeshBasicMaterial({color:0xffffff, side:C.DoubleSide})); m.position.set(x,y,z); m.rotation.set(rx||0,ry||0,0); env.add(m); };
+  panel(30,10, 0,40,0, 0, Math.PI/2);
+  panel(14,20, 40,10,-10, -Math.PI/2);
+  panel(10,14, -38,6,20, Math.PI/2);
+  scene.environment = pm.fromScene(env, .04).texture;
+})();
+
+scene.add(new C.HemisphereLight(0xd4e6f5, 0x5d7a3e, .45));
+const sun = new C.DirectionalLight(0xfff4e2, 1.7);
+sun.position.set(45, 80, -35);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-70,right:70,top:70,bottom:-70,near:10,far:260});
+sun.shadow.bias = -0.0004; sun.shadow.normalBias = .03;
+scene.add(sun);
+const fill = new C.DirectionalLight(0xcfe0ff, .45); fill.position.set(-40, 25, 40); scene.add(fill);
+
+
+
+/* ---------- model ---------- */
+const root = new C.Group(); scene.add(root);
+
+/* aluminium tripod with red head, clamps and shoes */
+(function(){
+  const t="tripod";
+  add(root, roundTri(9.6, 3, 3.2), "red", t, 0,-3.2,0);
+  add(root, cyl(3.4,3.4,1.2,32), "red", t, 0,-3.8,0);
+  add(root, cyl(.7,.7,4,16), "steel", t, 0,-5.2,0);
+  add(root, knurl(1.6,1,16,.1), "red", t, 0,-7.1,0);
+  const FLOOR = -118;
+  for(let i=0;i<3;i++){
+    const [dx,dz] = cornerDir(i);
+    const top = new C.Vector3(dx*8.8, -4.6, dz*8.8);
+    const foot = new C.Vector3(dx*42, FLOOR+3.2, dz*42);
+    const dir = foot.clone().sub(top), L = dir.length(); dir.normalize();
+    const tan = new C.Vector3(-dz,0,dx).normalize();
+    const rad = new C.Vector3().crossVectors(tan, dir).normalize();   // points outward
+    const q = new C.Quaternion().setFromRotationMatrix(new C.Matrix4().makeBasis(tan, dir, rad));
+    const at = (tt, off=0) => top.clone().addScaledVector(dir, tt*L).addScaledVector(rad, off);
+    const piece = (geo, kind, t0, t1, off=0, kindPart=t) => {
+      const m = add(root, geo, kind, kindPart);
+      m.position.copy(at((t0+t1)/2, off)); m.quaternion.copy(q); return m;
+    };
+    /* hinge block on the head */
+    const hb = add(root, box(5.2,3.2,3.6), "red", t); hb.position.copy(top).add(new C.Vector3(dx*.6,-.2,dz*.6)); hb.quaternion.copy(q);
+    const pin = add(root, cyl(.45,.45,6.2,12,"x"), "steel", t);
+    pin.position.copy(top).add(new C.Vector3(dx*.4,.3,dz*.4)); pin.rotation.y = Math.atan2(-dx,-dz);
+    /* upper aluminium section with a central groove */
+    const u0=.03, u1=.66;
+    piece(box(4.4,(u1-u0)*L,1.7), "alu", u0,u1);
+    piece(box(1.3,(u1-u0)*L,.12), "grey", u0,u1, .88);
+    /* clamp collar with thumb screw */
+    piece(box(5,3.2,2.6), "red", u1-.015,u1+.015);
+    const knob = add(root, cyl(.35,.35,1.6,12,"z"), "steel", t); knob.position.copy(at(u1, 1.9)); knob.quaternion.copy(q);
+    const kh = add(root, knurl(.95,.7,12,.15,"z"), "red", t); kh.position.copy(at(u1, 2.8)); kh.quaternion.copy(q);
+    /* lower sliding section */
+    const l0=u1, l1=.95;
+    piece(box(3,(l1-l0)*L,1.2), "alu", l0,l1);
+    /* red shoe, spike and foot pedal */
+    piece(box(3.8,4.2,2.2), "red", .935,.975);
+    const pedal = add(root, box(3.2,.7,1.6), "red", t); pedal.position.copy(at(.94, 0)).addScaledVector(tan, 2.6); pedal.quaternion.copy(q);
+    const spike = add(root, new C.ConeGeometry(1.1, 4.4, 16), "red", t); spike.position.copy(foot).add(new C.Vector3(0,-.6,0)); spike.rotation.x = Math.PI;
+    const tip = add(root, new C.ConeGeometry(.4, 1.6, 12), "steel", t); tip.position.copy(foot).add(new C.Vector3(0,-3.3,0)); tip.rotation.x = Math.PI;
+  }
+})();
+
+/* ranging pole with target board, placed at random on each page load */
+const TARGET = (function(){
+  /* random each page load: any direction, elevation kept between −3° and +3° (V 87°–93°) */
+  const hzDeg = Math.random()*360, elevDeg = (Math.random()*2-1)*3;
+  const th = hzDeg*Math.PI/180, R = 220, yAxis = 4.85 + 5.1 + 11.4;
+  const T = {x:R*Math.sin(th), z:-R*Math.cos(th), y:yAxis + R*Math.tan(elevDeg*Math.PI/180), half:4, poleR:.7, floor:-118,
+    hz: hzDeg, v: 90 - elevDeg};
+  /* round sector target (red and white quadrants) in a black yoke on a socket, on a wooden pole */
+  T.yokeR = T.half*1.17; T.stemH = T.half*.8;
+  T.poleTop = T.y - T.yokeR - T.stemH;
+  const hidden = new C.Group(); hidden.visible = false; scene.add(hidden); T.group = hidden;   // revealed for good once the eyepiece is first opened
+  add(hidden, cyl(T.poleR,T.poleR,T.poleTop-T.floor,16), "wood", "target", T.x, (T.poleTop+T.floor)/2, T.z);
+  const grp = new C.Group(); grp.position.set(T.x, T.y, T.z); grp.lookAt(0, T.y, 0); hidden.add(grp);
+  const cv = document.createElement("canvas"); cv.width = cv.height = 256;
+  const g = cv.getContext("2d");
+  const sector = (a0, a1, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(128,128); g.arc(128,128,124,a0,a1); g.closePath(); g.fill(); };
+  const q = Math.PI/4;
+  sector(-q, q, "#c4231c"); sector(q, 3*q, "#f6f4ec"); sector(3*q, 5*q, "#c4231c"); sector(5*q, 7*q, "#f6f4ec");
+  g.strokeStyle = "#1a1a1a"; g.lineWidth = 4; g.beginPath(); g.arc(128,128,124,0,Math.PI*2); g.stroke();
+  const tex = new C.CanvasTexture(cv); tex.encoding = C.sRGBEncoding;
+  const mat = new C.MeshStandardMaterial({map:tex, roughness:.55, transparent:true});
+  PARTS.target.mats.push(mat);
+  const disc = new C.Mesh(new C.CircleGeometry(T.half, 64), mat);
+  disc.position.z = .2; disc.userData.part = "target"; grp.add(disc);
+  add(grp, cyl(T.half,T.half,.3,64,"z"), "black", "target", 0,0,0);
+  const yoke = new C.TorusGeometry(T.yokeR, .32, 10, 48, Math.PI);
+  add(grp, yoke, "black", "target", 0,0,0, 0,0,Math.PI);
+  for(const sx of [-1,1]){
+    add(grp, cyl(.55,.55,.9,16,"x"), "black", "target", sx*(T.yokeR-.45),0,0);
+    add(grp, cyl(.25,.25,.5,12,"x"), "steel", "target", sx*(T.yokeR+.2),0,0);
+  }
+  add(grp, cyl(.6,.7,T.stemH,20), "black", "target", 0,-T.yokeR-T.stemH/2,0);
+  return T;
+})();
+
+/* survey control mark set in the ground, directly below the instrument */
+(function(){
+  const P="benchmark", FLOOR=-118;
+  add(root, box(22,2.2,22), "concrete", P, 0,FLOOR+.4,0);
+  add(root, box(20.4,.5,20.4), "concrete", P, 0,FLOOR+1.75,0);
+  const cv = document.createElement("canvas"); cv.width = cv.height = 512;
+  const g = cv.getContext("2d");
+  g.fillStyle = "#9b9a93"; g.fillRect(0,0,512,512);
+  for(let i=0;i<2600;i++){ const v = 120+Math.random()*60|0; g.fillStyle = `rgba(${v},${v},${v-6},.55)`; g.fillRect(Math.random()*512, Math.random()*512, 2+Math.random()*3, 2+Math.random()*3); }
+  g.fillStyle = "#4b4a46"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = "700 46px 'Be Vietnam Pro', Arial, sans-serif"; g.fillText("ĐC-01", 256, 420);
+  g.font = "600 30px 'Be Vietnam Pro', Arial, sans-serif"; g.fillText("MỐC TỌA ĐỘ", 256, 92);
+  const tex = new C.CanvasTexture(cv); tex.encoding = C.sRGBEncoding;
+  const mat = new C.MeshStandardMaterial({map:tex, roughness:.95, metalness:0});
+  PARTS[P].mats.push(mat);
+  const top = new C.Mesh(new C.PlaneGeometry(20.4,20.4), mat);
+  top.position.set(0, FLOOR+2.01, 0); top.rotation.set(-Math.PI/2,0,Math.PI);
+  top.userData.part = P; top.receiveShadow = true; root.add(top);
+  add(root, cyl(2.3,2.5,.35,40), "steel", P, 0,FLOOR+2.15,0);
+  add(root, box(3.4,.06,.12), "hole", P, 0,FLOOR+2.34,0);
+  add(root, box(.12,.06,3.4), "hole", P, 0,FLOOR+2.34,0);
+  add(root, cyl(.22,.22,.08,16), "hole", P, 0,FLOOR+2.35,0);
+})();
+
+/* base plate + tribrach */
+add(root, roundTri(8.6, 2.6, .5, .1), "yellow", "baseplate", 0, .05, 0);
+add(root, cyl(2.4,2.4,2.2,40), "yellow", "tribrach", 0, 1.65, 0);
+add(root, roundTri(7.6, 2.4, 1.7), "yellow", "tribrach", 0, 2.75, 0);
+add(root, cyl(3.4,3.6,.5,40), "yellow", "tribrach", 0, 4.6, 0);
+for(let i=0;i<3;i++){
+  const [dx,dz] = cornerDir(i), r=6.1;
+  add(root, cyl(.95,.95,1.35,32), "silver", "footscrew", dx*r, 2.1, dz*r);
+  add(root, knurl(1.4,.7,22,.08), "black", "footscrew", dx*r, 1.25, dz*r);
+  add(root, cyl(.75,.75,.25,24), "silver", "footscrew", dx*r, .78, dz*r);
+  add(root, cyl(.18,.18,1,8), "steel", "footscrew", dx*(r+1.6), .3, dz*(r+1.6));
+}
+/* tribrach lock knob on edge between corner 0 and 1 */
+(function(){
+  const a = Math.PI/2+Math.PI/3; const dx=Math.cos(a), dz=-Math.sin(a);
+  const g = new C.Group(); g.position.set(0,3.55,0); g.rotation.y = Math.atan2(dx,dz); root.add(g);
+  add(g, cyl(.45,.45,2,16,"z"), "steel", "lock", 0,0,4.6);
+  add(g, cyl(1.15,1.15,2.4,6,"z"), "black", "lock", 0,0,6.6, 0,0,Math.PI/6);
+})();
+
+/* alidade: everything above that turns about the vertical axis */
+const alidade = new C.Group(); alidade.position.y = 4.85; root.add(alidade);
+const A = "alidade";
+add(alidade, cyl(6.5,6.7,3.6,12), "yellow", A, 0,1.8,0, 0,Math.PI/12,0);
+add(alidade, cyl(6.3,6.4,1.5,56), "yellow", A, 0,4.35,0);
+add(alidade, cyl(6.32,6.32,.06,56), "hole", A, 0,3.62,0);
+const TOP = 5.1; // top surface of alidade disk (local)
+const AX = TOP + 11.4; // horizontal (HH) axis, high enough for the telescope to transit 360°
+const HB = TOP + 20.8; // underside of the carrying handle
+
+/* level block on the eyepiece side (+z): tube level set back in a raised step,
+   circular level on the lower step in front of it, as on the THEO 020B */
+add(alidade, box(7.6,1.0,8.6), "yellow", A, 0,TOP+.5,1.4);
+add(alidade, box(7.6,1.3,5.1), "yellow", A, 0,TOP+1.65,-.35);
+/* tube level window in the front face of the raised step */
+add(alidade, box(5.6,1.0,.3), "hole", "tubelevel", 0,TOP+1.65,2.1);
+add(alidade, cyl(.42,.42,4.8,28,"x"), "vial", "tubelevel", 0,TOP+1.65,2.5);
+add(alidade, new C.SphereGeometry(.3,20,10).scale(2,.62,.85), "bubble", "tubelevel", 0,TOP+1.95,2.5);
+for(const sgn of [-1,1]) for(let j=0;j<5;j++){
+  add(alidade, box(.02,.018,.42), "hole", "tubelevel", sgn*(.62+j*.3),TOP+2.072,2.5);
+}
+add(alidade, box(.4,.5,.6), "steel", "tubelevel", -2.75,TOP+1.65,2.45);
+add(alidade, box(.4,.5,.6), "steel", "tubelevel", 2.75,TOP+1.65,2.45);
+/* circular level on the lower step */
+const CLZ = 4.0;
+add(alidade, cyl(1.9,1.9,.1,48), "yellow", "circlevel", 0,TOP+1.05,CLZ);
+add(alidade, new C.TorusGeometry(1.9,.04,6,48), "hole", "circlevel", 0,TOP+1.1,CLZ, Math.PI/2,0,0);
+add(alidade, cyl(.85,.85,.35,32), "silver", "circlevel", 0,TOP+1.25,CLZ);
+add(alidade, new C.SphereGeometry(.72,24,12,0,Math.PI*2,0,Math.PI/2).scale(1,.1,1), "vial", "circlevel", 0,TOP+1.42,CLZ);
+add(alidade, new C.TorusGeometry(.28,.02,6,24), "hole", "circlevel", 0,TOP+1.495,CLZ, Math.PI/2,0,0);
+add(alidade, new C.SphereGeometry(.18,12,8).scale(1,.25,1), "bubble", "circlevel", 0,TOP+1.49,CLZ);
+for(let i=0;i<3;i++){ const a=Math.PI/2+i*2*Math.PI/3; add(alidade, cyl(.26,.26,.18,12), "silver", "adjscrew", Math.cos(a)*1.45,TOP+1.15,CLZ+Math.sin(a)*1.45); }
+for(const x of [-2.9,2.9]){
+  add(alidade, cyl(.24,.24,.375,20), "silver", "adjscrew", x,TOP+1.19,CLZ-.3);
+  add(alidade, box(.3,.03,.05), "hole", "adjscrew", x,TOP+1.385,CLZ-.3);
+}
+
+/* right standard (+x) */
+const S="standard";
+add(alidade, box(2.4,16.1,5.8), "yellow", S, 5,TOP+8.05,0);
+add(alidade, box(2.6,.25,6), "yellow", S, 5,TOP+16.2,0);
+/* carrying handle bridging the standards */
+for(const [x,y0] of [[5,TOP+16.1],[-5.1,TOP+17.8]]){
+  const h = HB - y0;
+  add(alidade, box(2.4,h,2.8), "yellow", "handle", x,y0+h/2,0);
+  add(alidade, box(2.5,Math.min(2.6,h-1.4),1.4), "hole", "handle", x,y0+h/2+.1,0);
+}
+add(alidade, box(12.6,1.5,2.8), "yellow", "handle", -.05,HB+.75,0);
+add(alidade, cyl(.35,.35,.08,16), "hole", "handle", 0,HB+1.51,0);
+add(alidade, cyl(1.15,1.15,.3,32,"x"), "yellow", S, 6.32,AX,0);
+add(alidade, box(.06,1.4,.2), "hole", S, 6.48,AX,0);
+/* dots marking the HH axis: on the slotted cap and on the vertical-circle cap */
+add(alidade, cyl(.15,.15,.06,20,"x"), "white", S, 6.53,AX,0);
+add(alidade, cyl(.15,.15,.06,20,"x"), "white", "vcircle", -6.65,AX,0);
+add(alidade, box(2.8,.65,.12), "silver", S, 5,TOP+13.9,2.95);
+for(const x of [4.2,5.8]) add(alidade, cyl(.17,.17,.1,12,"z"), "steel", S, x,TOP+13.9,3.05);
+
+/* left standard (−x) with vertical circle housing */
+add(alidade, box(2.6,11.4,5.8), "yellow", "vcircle", -5.1,TOP+5.7,0);
+add(alidade, cyl(5.3,5.3,2.6,64,"x"), "yellow", "vcircle", -5.1,AX,0);
+add(alidade, cyl(5.32,5.32,.06,64,"x"), "hole", "vcircle", -6.1,AX,0);
+add(alidade, box(2.6,6.4,5.2), "yellow", "vcircle", -5.1,TOP+14.6,0);
+add(alidade, cyl(1.3,1.3,.25,32,"x"), "yellow", "vcircle", -6.5,AX,0);
+/* instrument serial number, engraved in a recessed square frame like the V mark */
+(function(){
+  const W = 320, Hh = 112;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = Hh;
+  const g = cv.getContext("2d");
+  function paint(){
+    g.clearRect(0,0,W,Hh);
+    const rg = g.createLinearGradient(0,6,0,Hh-6);
+    rg.addColorStop(0,"#b8960f"); rg.addColorStop(.5,"#d4ad18"); rg.addColorStop(1,"#c9a414");
+    g.fillStyle = rg; g.fillRect(6,6,W-12,Hh-12);
+    g.strokeStyle = "#7a6206"; g.lineWidth = 6; g.strokeRect(6,6,W-12,Hh-12);
+    g.strokeStyle = "rgba(255,240,170,.55)"; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(12,Hh-11); g.lineTo(W-11,Hh-11); g.lineTo(W-11,12); g.stroke();
+    g.fillStyle = "#141414"; g.font = "700 58px 'JetBrains Mono', monospace"; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("699969", W/2, Hh/2+3);
+  }
+  paint();
+  const tex = new C.CanvasTexture(cv); tex.encoding = C.sRGBEncoding; tex.anisotropy = 8;
+  const mat = new C.MeshStandardMaterial({map:tex, transparent:true, roughness:.6, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2});
+  /* inner face of the standard (opposite the mirror), below the HH axis, near the vertical circle */
+  const pw = 2.4, ph = pw*Hh/W;
+  const m = new C.Mesh(new C.PlaneGeometry(pw, ph), mat);
+  m.position.set(-3.77, AX-3.6, 0); m.rotation.y = Math.PI/2;
+  m.userData.part = "vcircle"; alidade.add(m);
+  /* groove around the frame */
+  const t = .05;
+  for(const [dy, dz, h, w] of [[ph/2+t/2, 0, t, pw+2*t], [-ph/2-t/2, 0, t, pw+2*t], [0, pw/2+t/2, ph, t], [0, -pw/2-t/2, ph, t]])
+    add(alidade, box(.03, h, w), "hole", "vcircle", -3.79, AX-3.6+dy, dz);
+  if(document.fonts && document.fonts.load) document.fonts.load("700 58px 'JetBrains Mono'").then(()=>{ paint(); tex.needsUpdate = true; }).catch(()=>{});
+})();
+
+/* illumination mirror (gương lấy sáng) on the outer face of the left standard */
+const mirrorFrame = new C.Group(); mirrorFrame.position.set(-6.5,TOP+5.4,0); alidade.add(mirrorFrame);
+add(mirrorFrame, cyl(2.05,2.05,.35,48,"x"), "yellow", "mirror", -.1,0,0);
+/* the ring, its glass and the hinged cover turn together about the window axis */
+const mirrorSpin = new C.Group(); mirrorFrame.add(mirrorSpin);
+add(mirrorSpin, new C.TorusGeometry(1.95,.26,12,48), "yellow", "mirror", -.3,0,0, 0,Math.PI/2,0);
+add(mirrorSpin, cyl(1.75,1.75,.06,48,"x"), "glass", "mirror", -.3,0,0);
+for(const y of [-2.05,2.05]) add(mirrorSpin, box(.4,.35,.9), "yellow", "mirror", -.45,y,0);
+add(mirrorSpin, box(.5,1.6,.5), "yellow", "mirror", -.5,0,2.05);
+const hinge = new C.Group(); hinge.position.set(-.55,0,2.15); mirrorSpin.add(hinge);
+add(hinge, cyl(2.15,2.15,.42,48,"x"), "yellow", "mirror", -.1,0,-2.15);
+add(hinge, new C.TorusGeometry(2.0,.12,8,48), "yellow", "mirror", .14,0,-2.15, 0,Math.PI/2,0);
+const mirrorFace = add(hinge, cyl(1.85,1.85,.05,48,"x"), "mirror", "mirror", .14,0,-2.15);
+add(hinge, cyl(.2,.2,1.4,12), "steel", "mirror", 0,0,0);
+add(hinge, box(.3,.6,.5), "yellow", "mirror", 0,0,-.25);
+
+/* vertical clamp & tangent knob on right standard */
+/* clamp levers (khóa máy, khóa ống kính) behind the Hz/V reading selector knob */
+const KY = TOP+1.7;
+add(alidade, cyl(1.5,1.5,.45,32,"x"), "yellow", "selector", 6.42,KY,0);
+function lever(dy, dir, part){
+  const g = new C.Group(); g.position.set(6.6, KY+dy, 0); alidade.add(g);
+  add(g, box(.42,.6,3.6), "black", part);
+  for(const sgn of [-1,1]){
+    const arm = new C.Group(); arm.rotation.x = -sgn*dir*.13; g.add(arm);
+    add(arm, box(.42,.62,1.6), "black", part, 0,0,sgn*2.4);
+    add(arm, box(.42,.95,1.4), "black", part, 0,dir*.12,sgn*3.55);
+  }
+  return g;
+}
+const telLever = lever(1.2, 1, "telclamp");   // upper pair: telescope clamp (HH)
+const hzLever = lever(-1.2, -1, "hzlock");    // lower pair: instrument clamp (VV)
+/* selector knob with its white index dot; dot at the V mark shows the V scale */
+const selKnob = new C.Group(); selKnob.position.set(7.15, KY, 0); alidade.add(selKnob);
+add(selKnob, knurl(2.15,.9,34,.05,"x"), "black", "selector");
+add(selKnob, cyl(.2,.2,.04,16,"x"), "white", "selector", .46,1.55,0);
+/* engraved V on the standard above the knob */
+(function(){
+  const cv = document.createElement("canvas"); cv.width = cv.height = 128;
+  const g = cv.getContext("2d");
+  const rg = g.createRadialGradient(58,54,8,64,64,60);
+  rg.addColorStop(0,"#d9b21a"); rg.addColorStop(1,"#b8960f");
+  g.fillStyle = rg; g.beginPath(); g.arc(64,64,58,0,Math.PI*2); g.fill();
+  g.strokeStyle = "#7a6206"; g.lineWidth = 5; g.beginPath(); g.arc(64,64,58,0,Math.PI*2); g.stroke();
+  g.strokeStyle = "rgba(255,240,170,.55)"; g.lineWidth = 2; g.beginPath(); g.arc(64,64,54,Math.PI*.15,Math.PI*.85); g.stroke();
+  g.strokeStyle = "#141414"; g.lineWidth = 11; g.lineJoin = "miter"; g.lineCap = "butt";
+  g.beginPath(); g.moveTo(38,36); g.lineTo(64,94); g.lineTo(90,36); g.stroke();
+  const tex = new C.CanvasTexture(cv); tex.encoding = C.sRGBEncoding;
+  const m = new C.Mesh(new C.PlaneGeometry(1.1,1.1), new C.MeshStandardMaterial({map:tex, transparent:true, roughness:.6, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2}));
+  m.position.set(6.23, KY+3.15, 0);
+  add(alidade, new C.TorusGeometry(.55,.035,6,40), "hole", "selector", 6.2,KY+3.15,0, 0,Math.PI/2,0); m.rotation.y = Math.PI/2; m.userData.part = "selector";
+  alidade.add(m);
+})();
+
+/* reading microscope, alongside the eyepiece */
+
+/* horizontal clamp latch (eyepiece side) */
+add(alidade, box(2.4,2.6,.25), "yellow", "hzclamp", -2,1.9,6.62);
+add(alidade, box(.7,1.6,.35), "silver", "hzclamp", -2,2.2,6.9, -.2,0,0);
+add(alidade, box(.7,.35,1.6), "silver", "hzclamp", -2,1.3,7.4);
+for(const [x,y] of [[-2.9,2.9],[-1.1,2.9],[-2.9,.9]]) add(alidade, cyl(.2,.2,.12,12,"z"), "silver", "hzclamp", x,y,6.8);
+
+/* horizontal clamp + tangent (double knob) */
+add(alidade, cyl(.6,.6,2.2,20,"x"), "yellow", "hztangent", 7.4,1.6,-2.2);
+add(alidade, knurl(1.35,.75,22,.08,"x"), "black", "hztangent", 8.6,1.6,-2.2);
+add(alidade, knurl(1.15,.75,20,.08,"x"), "black", "hztangent", 9.45,1.6,-2.2);
+
+/* optical plummet */
+add(alidade, cyl(1.5,1.5,.25,40,"z"), "yellow", "plummet", 0,3.9,-6.45);
+add(alidade, cyl(.75,.75,1.4,24,"z"), "yellow", "plummet", 0,3.9,-7.1);
+add(alidade, knurl(.85,.6,16,.1,"z"), "black", "plummet", 0,3.9,-7.95);
+add(alidade, cyl(.5,.5,.05,24,"z"), "glass", "plummet", 0,3.9,-8.27);
+for(const x of [-1.8,1.8]) add(alidade, cyl(.17,.17,.1,12,"z"), "silver", "plummet", x,3.9,-6.6);
+
+/* nameplate on the top of the upper ring, above the optical plummet */
+(function(){
+  const cv = document.createElement("canvas"); cv.width = 1024; cv.height = 200;
+  const g = cv.getContext("2d");
+  const grd = g.createLinearGradient(0,0,0,200);
+  grd.addColorStop(0,"#eef1f3"); grd.addColorStop(.5,"#c9cfd4"); grd.addColorStop(1,"#e4e8eb");
+  g.fillStyle = grd; g.fillRect(0,0,1024,200);
+  g.strokeStyle = "#7d868d"; g.lineWidth = 6; g.strokeRect(3,3,1018,194);
+  g.fillStyle = "#16191b"; g.fillRect(36,36,190,128);
+  g.strokeStyle = "#e9edf0"; g.lineWidth = 7;
+  g.beginPath(); g.ellipse(131,100,58,34,0,0,Math.PI*2); g.stroke();
+  g.beginPath(); g.moveTo(73,100); g.lineTo(189,100); g.stroke();
+  g.fillStyle = "#16191b";
+  g.font = "700 118px 'Be Vietnam Pro', Arial, sans-serif"; g.textBaseline = "middle";
+  g.fillText("THEO 020 B", 262, 106);
+  const tex = new C.CanvasTexture(cv); tex.encoding = C.sRGBEncoding; tex.anisotropy = 8;
+  const mat = new C.MeshStandardMaterial({map:tex, roughness:.32, metalness:.55, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2});
+  PARTS.nameplate.mats = [mat];
+  const m = new C.Mesh(new C.PlaneGeometry(4.3,.84), mat);
+  m.position.set(0, 5.1+.012, -4.75); m.rotation.set(-Math.PI/2, 0, Math.PI);
+  m.userData.part = "nameplate"; m.receiveShadow = true;
+  alidade.add(m);
+  if(document.fonts && document.fonts.load){ document.fonts.load("700 118px 'Be Vietnam Pro'").then(()=>{ g.fillStyle=grd; g.fillRect(250,20,760,160); g.fillStyle="#16191b"; g.font="700 118px 'Be Vietnam Pro', Arial, sans-serif"; g.fillText("THEO 020 B", 262, 106); tex.needsUpdate = true; }).catch(()=>{}); }
+})();
+
+/* telescope: tilts about the horizontal (trunnion) axis */
+const tel = new C.Group(); tel.position.set(0, AX, 0); alidade.add(tel);
+const T="telescope";
+add(tel, cyl(1.3,1.3,7.6,32,"x"), "steel", T);
+add(tel, box(5.8,4.4,5), "yellow", T);
+add(tel, cyl(2.75,2.75,4.2,56,"z"), "yellow", T, 0,0,-4.4);
+add(tel, cyl(2.9,2.9,.5,56,"z"), "yellow", T, 0,0,-4.3);
+{ const hood = new C.CylinderGeometry(2.9,2.9,.95,56,1,true); hood.rotateX(Math.PI/2);
+  add(tel, hood, "yellow", "objective", 0,0,-6.95);
+  const lip = new C.RingGeometry(2.45,2.9,56); lip.rotateY(Math.PI);
+  add(tel, lip, "yellow", "objective", 0,0,-7.42); }
+add(tel, new C.TorusGeometry(2.55,.28,14,56), "silver", "objective", 0,0,-7.42);
+{ const ob = new C.CylinderGeometry(2.5,2.5,.9,56,1,true); ob.rotateX(Math.PI/2);
+  const inner = add(tel, ob, "hole", "objective", 0,0,-7.0); inner.material.side = C.DoubleSide; }
+add(tel, new C.TorusGeometry(2.38,.09,8,56), "black", "objective", 0,0,-6.62);
+{ const R=7, th=Math.asin(2.42/R);
+  const lens = new C.SphereGeometry(R,64,6,0,Math.PI*2,0,th); lens.rotateX(-Math.PI/2);
+  add(tel, lens, "lens", "objective", 0,0,-7.05+R); }
+add(tel, cyl(2.3,2.3,3.2,48,"z"), "yellow", "focus", 0,0,4.1);
+for(let i=0;i<14;i++){ const a=i/14*Math.PI*2; add(tel, box(.22,.22,2.8), "yellow", "focus", Math.cos(a)*2.32,Math.sin(a)*2.32,4.1, 0,0,a); }
+add(tel, cyl(1.75,1.75,1.1,40,"z"), "yellow", T, 0,0,6.25);
+add(tel, knurl(1.75,1.5,24,.07,"z"), "black", "eyepiece", 0,0,7.55);
+add(tel, cyl(1.2,1.2,.05,32,"z"), "glass", "eyepiece", 0,0,8.32);
+add(tel, new C.TorusGeometry(1.35,.12,8,32), "black", "eyepiece", 0,0,8.3);
+for(const [x,y,z] of [[2.95,1.3,1.2],[2.95,-1.3,-1.2],[-2.95,1.3,1.2]]) add(tel, cyl(.18,.18,.1,12,"x"), "silver", T, x,y,z);
+add(tel, cyl(.32,.32,.25,12), "black", T, 0,2.3,-1.9);
+/* reading microscope, beside the eyepiece, tilts with the telescope */
+add(tel, cyl(.65,.65,3.7,24,"z"), "yellow", "microscope", 3.0,-.6,4.3);
+add(tel, knurl(1.05,1.2,18,.08,"z"), "black", "microscope", 3.0,-.6,6.75);
+add(tel, cyl(.6,.6,.05,24,"z"), "glass", "microscope", 3.0,-.6,7.38);
+/* finder sight */
+add(tel, box(1.4,.25,1.6), "yellow", "finder", -.4,2.32,0);
+add(tel, cyl(.2,.2,.8,12), "yellow", "finder", -.4,2.75,1.3);
+add(tel, cyl(.2,.2,.8,12), "yellow", "finder", -.4,2.75,-1.3);
+add(tel, cyl(.55,.55,5.2,24,"z"), "yellow", "finder", -.4,3.4,0);
+add(tel, cyl(.42,.42,.05,20,"z"), "glass", "finder", -.4,3.4,-2.62);
+add(tel, cyl(.42,.42,.05,20,"z"), "glass", "finder", -.4,3.4,2.62);
+
+const BIRDS = [];
+/* ---------- natural surroundings: sky, grass, hills, mountains, trees, clouds ---------- */
+const FLOOR_Y = -118, EYE_Y = 4.85 + 5.1 + 11.4;
+/* skyline heights in degrees above the telescope's horizon; the eyepiece view uses the same functions */
+function MOUNT_DEG(a){ return .55 + .3*Math.sin(3*a) + .18*Math.sin(7*a+1) + .08*Math.sin(23*a+2) + .045*Math.sin(61*a+.5) + .02*Math.sin(173*a); }
+function HILL_DEG(a){ return .22 + .1*Math.sin(5*a+2) + .06*Math.sin(17*a+1) + .03*Math.sin(83*a) + .012*Math.sin(311*a); }
+scene.background = lin("#d3e2ea");
+scene.fog = new C.Fog(lin("#d6e3ea"), 500, 1750);
+(function(){
+  /* sky dome */
+  const sky = new C.SphereGeometry(1850, 48, 24), col = [], p = sky.attributes.position;
+  const hor = new C.Color(0xe2ecef), zen = new C.Color(0x5f93c6);
+  for(let i=0;i<p.count;i++){ const t = Math.max(0, p.getY(i)/1850); const c = hor.clone().lerp(zen, Math.pow(t,.55)); col.push(c.r,c.g,c.b); }
+  sky.setAttribute("color", new C.Float32BufferAttribute(col,3));
+  const skyM = new C.Mesh(sky, new C.MeshBasicMaterial({vertexColors:true, side:C.BackSide, fog:false, depthWrite:false}));
+  skyM.renderOrder = -1; scene.add(skyM);
+
+  /* grass ground */
+  const cv = document.createElement("canvas"); cv.width = cv.height = 256;
+  const g = cv.getContext("2d");
+  g.fillStyle = "#6e8e47"; g.fillRect(0,0,256,256);
+  for(let i=0;i<5000;i++){
+    const t = Math.random(); g.fillStyle = t<.33 ? "rgba(92,122,56,.6)" : t<.66 ? "rgba(132,160,82,.55)" : "rgba(80,104,48,.5)";
+    g.fillRect(Math.random()*256, Math.random()*256, 1+Math.random()*2, 2+Math.random()*4);
+  }
+  const tex = new C.CanvasTexture(cv); tex.encoding = C.sRGBEncoding;
+  tex.wrapS = tex.wrapT = C.RepeatWrapping; tex.repeat.set(140,140); tex.anisotropy = 8;
+  const ground = new C.Mesh(new C.CircleGeometry(1800, 96), new C.MeshStandardMaterial({map:tex, roughness:1, metalness:0}));
+  ground.rotation.x = -Math.PI/2; ground.position.y = FLOOR_Y; ground.receiveShadow = true; scene.add(ground);
+
+  /* trampled earth around the station */
+  const dc = document.createElement("canvas"); dc.width = dc.height = 256;
+  const d = dc.getContext("2d");
+  const rg = d.createRadialGradient(128,128,10,128,128,128);
+  rg.addColorStop(0,"rgba(135,116,82,.95)"); rg.addColorStop(.6,"rgba(128,112,78,.7)"); rg.addColorStop(1,"rgba(120,110,80,0)");
+  d.fillStyle = rg; d.fillRect(0,0,256,256);
+  for(let i=0;i<900;i++){ d.fillStyle = `rgba(90,76,52,${Math.random()*.35})`; const a=Math.random()*6.28, r=Math.random()*100; d.fillRect(128+Math.cos(a)*r,128+Math.sin(a)*r,2,2); }
+  const dt = new C.CanvasTexture(dc); dt.encoding = C.sRGBEncoding;
+  const dirt = new C.Mesh(new C.CircleGeometry(70, 48), new C.MeshStandardMaterial({map:dt, transparent:true, roughness:1, depthWrite:false}));
+  dirt.rotation.x = -Math.PI/2; dirt.position.y = FLOOR_Y + .08; dirt.receiveShadow = true; scene.add(dirt);
+
+  /* skyline rings: distant mountains and nearer hills */
+  function ring(R, fn, color, base){
+    const N = 900, pos = [], idx = [];
+    for(let i=0;i<=N;i++){
+      const a = i/N*Math.PI*2, x = R*Math.sin(a), z = -R*Math.cos(a);
+      pos.push(x, base, z, x, EYE_Y + R*Math.tan(fn(a)*Math.PI/180), z);
+      if(i<N){ const k = i*2; idx.push(k,k+1,k+2, k+1,k+3,k+2); }
+    }
+    const geo = new C.BufferGeometry(); geo.setAttribute("position", new C.Float32BufferAttribute(pos,3)); geo.setIndex(idx); geo.computeVertexNormals();
+    const m = new C.Mesh(geo, new C.MeshLambertMaterial({color:lin(color), side:C.DoubleSide}));
+    scene.add(m);
+  }
+  ring(1600, MOUNT_DEG, "#7f98ad", FLOOR_Y - 10);
+  ring(1000, HILL_DEG, "#5f7f52", FLOOR_Y - 5);
+
+  /* campus walking path: a paved loop well away from the station */
+  const pathPts = [];
+  for(let i=0;i<12;i++){
+    const a = i/12*Math.PI*2, r = 520 + 140*Math.sin(3*a+.7) + 60*Math.sin(5*a);
+    pathPts.push(new C.Vector3(r*Math.sin(a), 0, -r*Math.cos(a)));
+  }
+  const curve = new C.CatmullRomCurve3(pathPts, true, "catmullrom", .5);
+  const NS = 600, W = 70, samples = curve.getSpacedPoints(NS);
+  const pc = document.createElement("canvas"); pc.width = 128; pc.height = 256;
+  const pg = pc.getContext("2d");
+  pg.fillStyle = "#b9b2a3"; pg.fillRect(0,0,128,256);
+  for(let row=0; row<8; row++){
+    for(let col=0; col<4; col++){
+      const off = (row%2)*16, x = col*32 - off, y = row*32;
+      const v = 168 + Math.floor(Math.random()*30);
+      pg.fillStyle = `rgb(${v},${v-6},${v-18})`; pg.fillRect(x+2, y+2, 28, 28);
+      if(x < 0) pg.fillRect(x+128+2, y+2, 28, 28);
+    }
+  }
+  pg.fillStyle = "#6f6a60"; pg.fillRect(0,0,9,256); pg.fillRect(119,0,9,256);
+  const ptex = new C.CanvasTexture(pc); ptex.encoding = C.sRGBEncoding; ptex.wrapT = C.RepeatWrapping; ptex.anisotropy = 8;
+  const pos = [], uv = [], idx = [];
+  let along = 0;
+  for(let i=0;i<=NS;i++){
+    const p = samples[i % NS], q = samples[(i+1) % NS];
+    const t = q.clone().sub(p).normalize(), nrm = new C.Vector3(-t.z, 0, t.x);
+    if(i>0) along += p.distanceTo(samples[(i-1) % NS]);
+    for(const s of [-1,1]){ const v = p.clone().addScaledVector(nrm, s*W/2); pos.push(v.x, FLOOR_Y + .25, v.z); uv.push(s<0?0:1, along/W); }
+    if(i<NS){ const k=i*2; idx.push(k,k+2,k+1, k+1,k+2,k+3); }
+  }
+  const pgeo = new C.BufferGeometry();
+  pgeo.setAttribute("position", new C.Float32BufferAttribute(pos,3)); pgeo.setAttribute("uv", new C.Float32BufferAttribute(uv,2));
+  pgeo.setIndex(idx); pgeo.computeVertexNormals();
+  const path = new C.Mesh(pgeo, new C.MeshStandardMaterial({map:ptex, roughness:.9, side:C.DoubleSide}));
+  path.receiveShadow = true; scene.add(path);
+  const onPath = (x,z) => samples.some(p => (p.x-x)*(p.x-x) + (p.z-z)*(p.z-z) < (W*.75)*(W*.75));
+
+  /* grass tufts only, kept clear of the station and the sight line to the target */
+  const tAz = Math.atan2(TARGET.x, -TARGET.z);
+  const clearOfSight = (a, r) => {
+    const dA = Math.abs(((a - tAz + Math.PI) % (2*Math.PI) + 2*Math.PI) % (2*Math.PI) - Math.PI);
+    return !(dA < .22 && r < 320);
+  };
+  const o = new C.Object3D();
+  const tufts = [];
+  for(let i=0; tufts.length < 1400 && i < 6000; i++){
+    const r = 30 + Math.pow(Math.random(),.7)*520, a = Math.random()*Math.PI*2;
+    if(!clearOfSight(a, r)) continue;
+    const tx = r*Math.sin(a), tz = -r*Math.cos(a); if(onPath(tx, tz)) continue;
+    tufts.push({x:r*Math.sin(a), z:-r*Math.cos(a), h:5 + Math.random()*11});
+  }
+  const bladeG = new C.ConeGeometry(.35, 1, 4); bladeG.translate(0,.5,0);
+  const tuftM = new C.InstancedMesh(bladeG, new C.MeshLambertMaterial({color:0xffffff}), tufts.length*3);
+  const blades = ["#6f9446","#7da24f","#5f8640"].map(h=>lin(h));
+  let n = 0;
+  tufts.forEach(t=>{
+    for(let j=0;j<3;j++){
+      o.position.set(t.x + (j-1)*.9, FLOOR_Y, t.z + (j%2)*.7); o.rotation.set((j-1)*.25, Math.random()*6, (j-1)*.2);
+      o.scale.set(t.h*.25, t.h*(.8+j*.15), t.h*.25); o.updateMatrix();
+      tuftM.setMatrixAt(n, o.matrix); tuftM.setColorAt(n, blades[j]); n++;
+    }
+  });
+  [tuftM].forEach(m=>{ m.instanceMatrix.needsUpdate = true; if(m.instanceColor) m.instanceColor.needsUpdate = true; scene.add(m); });
+
+  /* a few birds circling high over the campus */
+  const birdM = new C.MeshLambertMaterial({color:lin("#2b2f33"), side:C.DoubleSide, fog:false});
+  const wingG = new C.BufferGeometry();
+  wingG.setAttribute("position", new C.Float32BufferAttribute([0,0,-2, 0,0,3, 16,1,-1],3)); wingG.computeVertexNormals();
+  for(let i=0;i<7;i++){
+    const b = new C.Group();
+    const body = new C.Mesh(new C.SphereGeometry(1,8,6), birdM); body.scale.set(1.6,1.4,5); b.add(body);
+    const L = new C.Mesh(wingG, birdM), R = new C.Mesh(wingG, birdM); R.scale.x = -1;
+    b.add(L); b.add(R); b.scale.setScalar(1.4 + Math.random()*.6);
+    b.userData = {L, R, r: 380 + Math.random()*520, y: 240 + Math.random()*220, a: Math.random()*Math.PI*2,
+      w: (.05 + Math.random()*.05)*(Math.random()<.5?-1:1), f: 5 + Math.random()*3, ph: Math.random()*6};
+    scene.add(b); BIRDS.push(b);
+  }
+  /* clouds */
+  const cloudM = new C.MeshLambertMaterial({color:0xffffff, emissive:0x8a96a0, fog:false});
+  const puff = new C.SphereGeometry(1, 16, 10);
+  for(let k=0;k<14;k++){
+    const a = Math.random()*Math.PI*2, R = 1100 + Math.random()*500, y = 380 + Math.random()*380;
+    const grp = new C.Group(); grp.position.set(R*Math.sin(a), y, -R*Math.cos(a)); grp.lookAt(0, y, 0);
+    for(let j=0;j<5;j++){ const m = new C.Mesh(puff, cloudM); const s = 50 + Math.random()*55; m.scale.set(s*1.6, s*.55, s); m.position.set((j-2)*s*1.1, Math.random()*20, Math.random()*30); grp.add(m); }
+    scene.add(grp);
+  }
+})();
+
+/* ---------- interaction ---------- */
+const hzIn = document.getElementById("hz"), vzIn = document.getElementById("vz");
+const hzOut = document.getElementById("hzOut"), vOut = document.getElementById("vOut");
+function dms(deg){
+  let s = Math.round(deg*3600/6)*6; s = ((s % 1296000)+1296000)%1296000;
+  const d = Math.floor(s/3600), m = Math.floor(s%3600/60), sec = s%60;
+  return d+"°"+String(m).padStart(2,"0")+"′"+String(sec).padStart(2,"0")+"″";
+}
+/* reading selector: Hz or V scale in the reading microscope */
+let scaleV = false, selAngle = -1.75, selTarget = -1.75;
+const scaleBtn = document.getElementById("scaleBtn"), scaleTxt = document.getElementById("scaleTxt");
+function setScale(v){
+  scaleV = v; selTarget = v ? 0 : -1.75;
+  document.getElementById("vBox").classList.toggle("off", !v);
+  scaleTxt.textContent = v ? "Chấm trắng chỉ vào chữ V: kính đọc số hiện cả thang Hz và thang V." : "Kính đọc số chỉ hiện thang Hz.";
+  scaleBtn.textContent = v ? "Xoay núm về Hz" : "Xoay núm tới V";
+}
+scaleBtn.addEventListener("click", ()=>setScale(!scaleV));
+let lightDirty = true, lightPct = 0;
+function updateAngles(){
+  const hz = +hzIn.value, v = +vzIn.value;
+  alidade.rotation.y = -C.MathUtils.degToRad(hz);
+  lightDirty = true;
+  tel.rotation.x = C.MathUtils.degToRad(90 - v);
+  hzOut.textContent = dms(hz); vOut.textContent = dms(v);
+}
+hzIn.addEventListener("input", updateAngles); vzIn.addEventListener("input", updateAngles);
+/* clamps: locking a lever stops coarse rotation; only the tangent (vi động) screw moves it */
+const locks = {hz:false, v:false};
+const FINE = 6/3600; // 6″ per click
+const hzLockBtn = document.getElementById("hzLockBtn"), vLockBtn = document.getElementById("vLockBtn");
+function setLock(axis, on){
+  locks[axis] = on;
+  const isHz = axis==="hz";
+  const btn = isHz ? hzLockBtn : vLockBtn, input = isHz ? hzIn : vzIn;
+  btn.setAttribute("aria-pressed", on);
+  btn.textContent = (isHz ? "Khóa máy: " : "Khóa ống kính: ") + (on ? "đã khóa" : "đang mở");
+  input.disabled = on;
+  document.getElementById(isHz ? "hzFine" : "vFine").hidden = !on;
+  document.querySelectorAll(isHz ? "#hzStep button" : "#vStep button").forEach(b=>b.disabled = on);
+  if(on){
+    if(isHz && spinVV){ spinVV = false; vvBtn.setAttribute("aria-pressed", false); }
+    if(!isHz && spinHH){ spinHH = false; hhBtn.setAttribute("aria-pressed", false); }
+  }
+}
+hzLockBtn.addEventListener("click", ()=>setLock("hz", !locks.hz));
+vLockBtn.addEventListener("click", ()=>setLock("v", !locks.v));
+/* press-and-hold repeats a step: degree/minute steps when unclamped, 6″ tangent steps when clamped */
+function holdRepeat(btn, fn){
+  let t1 = null, t2 = null;
+  const stop = ()=>{ clearTimeout(t1); clearInterval(t2); t1 = t2 = null; };
+  btn.addEventListener("pointerdown", e=>{ e.preventDefault(); stop(); fn(); t1 = setTimeout(()=>{ t2 = setInterval(fn, 70); }, 380); });
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>btn.addEventListener(ev, stop));
+  btn.addEventListener("keydown", e=>{ if(e.key==="Enter" || e.key===" "){ e.preventDefault(); fn(); } });
+}
+const nudge = (input, deg) => { input.value = (((+input.value + deg) % 360) + 360) % 360; updateAngles(); };
+document.querySelectorAll("#hzFine button").forEach(b=>holdRepeat(b, ()=>nudge(hzIn, (+b.dataset.d)*FINE)));
+document.querySelectorAll("#vFine button").forEach(b=>holdRepeat(b, ()=>nudge(vzIn, (+b.dataset.d)*FINE)));
+document.querySelectorAll("#hzStep button").forEach(b=>holdRepeat(b, ()=>{ if(!locks.hz) nudge(hzIn, (+b.dataset.d)/60); }));
+document.querySelectorAll("#vStep button").forEach(b=>holdRepeat(b, ()=>{ if(!locks.v) nudge(vzIn, (+b.dataset.d)/60); }));
+/* arrow keys on a slider move it by 1′ (Shift: 1°) */
+[hzIn, vzIn].forEach(inp=>inp.addEventListener("keydown", e=>{
+  const d = {ArrowRight:1, ArrowUp:1, ArrowLeft:-1, ArrowDown:-1}[e.key];
+  if(!d || inp.disabled) return;
+  e.preventDefault(); nudge(inp, d*(e.shiftKey ? 1 : 1/60));
+}));
+updateAngles();
+
+/* mirror: open angle + spin about the window axis, and a light check against the sun */
+const mOpen = document.getElementById("mOpen"), mSpin = document.getElementById("mSpin");
+const lightBar = document.getElementById("lightBar"), lightTxt = document.getElementById("lightTxt");
+function updateMirror(){
+  hinge.rotation.y = C.MathUtils.degToRad(+mOpen.value);
+  mirrorSpin.rotation.x = C.MathUtils.degToRad(+mSpin.value);
+  document.getElementById("mOpenOut").textContent = mOpen.value+"°";
+  document.getElementById("mSpinOut").textContent = mSpin.value+"°";
+  lightDirty = true;
+}
+mOpen.addEventListener("input", updateMirror); mSpin.addEventListener("input", updateMirror);
+const rayMat = new C.LineBasicMaterial({color:0xffc83d, transparent:true, opacity:.9});
+const rayGeo = new C.BufferGeometry().setFromPoints([new C.Vector3(),new C.Vector3(),new C.Vector3()]);
+const rayLine = new C.Line(rayGeo, rayMat); rayLine.visible = false;
+const lightRay = new C.Raycaster();
+const _q = new C.Quaternion(), _p = new C.Vector3();
+/* illumination lamp: for when the mirror sits in the instrument's shadow or the sky is dull */
+let lampOn = false;
+const lampBtn = document.getElementById("lampBtn");
+const lampGlow = new C.Mesh(new C.CircleGeometry(1.75, 40), new C.MeshBasicMaterial({color:0xfff1c2}));
+lampGlow.rotation.y = -Math.PI/2; lampGlow.position.set(-.36, 0, 0); lampGlow.visible = false; lampGlow.userData.part = "mirror"; mirrorSpin.add(lampGlow);
+const lampLight = new C.PointLight(0xffe9b0, 0, 14); lampLight.position.set(-1.5,0,0); mirrorSpin.add(lampLight);
+lampBtn.addEventListener("click", ()=>{
+  lampOn = !lampOn;
+  lampBtn.setAttribute("aria-pressed", lampOn);
+  lampBtn.textContent = lampOn ? "Tắt đèn chiếu sáng bàn độ" : "Bật đèn chiếu sáng bàn độ";
+  lampGlow.visible = lampOn; lampLight.intensity = lampOn ? 1.2 : 0;
+  lightDirty = true;
+});
+function checkLight(){
+  mirrorFace.getWorldPosition(_p);
+  const n = new C.Vector3(1,0,0).applyQuaternion(mirrorFace.getWorldQuaternion(_q)).normalize();
+  const toSun = sun.position.clone().normalize();
+  const w = new C.Vector3(1,0,0).applyQuaternion(mirrorFrame.getWorldQuaternion(_q)).normalize();
+  let pct = 0, msg;
+  const facing = n.dot(toSun);
+  if(+mOpen.value < 15){ msg = "Nắp gương đang đóng. Mở nắp để lấy sáng."; }
+  else if(facing <= 0){ msg = "Mặt gương quay lưng về phía nguồn sáng. Xoay gương hoặc quay máy."; }
+  else {
+    lightRay.set(_p.clone().addScaledVector(toSun,.4), toSun);
+    const blocked = lightRay.intersectObject(root, true).some(h => h.object.userData.part !== "mirror");
+    if(blocked){ msg = "Gương nằm trong bóng của máy. Quay máy để gương hướng ra phía nguồn sáng."; }
+    else {
+      const d = toSun.clone().negate();
+      const r = d.clone().addScaledVector(n, -2*d.dot(n));
+      pct = Math.round(Math.pow(Math.max(0, r.dot(w)), 6)*100);
+      msg = pct > 80 ? "Bàn độ đủ sáng, đọc số rõ." : pct > 30 ? "Đã có ánh sáng, chỉnh thêm gương cho sáng hơn." : "Ánh sáng chưa vào cửa sổ. Xoay gương thêm.";
+      const pos = rayGeo.attributes.position;
+      const a = _p.clone().addScaledVector(toSun, 30), c = _p.clone().addScaledVector(r, 7);
+      pos.setXYZ(0,a.x,a.y,a.z); pos.setXYZ(1,_p.x,_p.y,_p.z); pos.setXYZ(2,c.x,c.y,c.z); pos.needsUpdate = true;
+      rayGeo.computeBoundingSphere();
+    }
+  }
+  if(lampOn){ pct = 100; msg = "Đang dùng đèn chiếu sáng, bàn độ đủ sáng."; }
+  lightBar.style.width = pct+"%";
+  lightPct = pct;
+  lightTxt.textContent = "Ánh sáng vào bàn độ: "+pct+"%. "+msg;
+}
+updateMirror();
+let spinVV = false, spinHH = false;
+const vvBtn = document.getElementById("spinVV"), hhBtn = document.getElementById("spinHH");
+vvBtn.addEventListener("click", ()=>{ if(locks.hz) setLock("hz", false); spinVV = !spinVV; vvBtn.setAttribute("aria-pressed", spinVV); });
+hhBtn.addEventListener("click", ()=>{ if(locks.v) setLock("v", false); spinHH = !spinHH; hhBtn.setAttribute("aria-pressed", spinHH); });
+const spinBtn = document.getElementById("spinBtn");
+spinBtn.addEventListener("click", ()=>{
+  controls.autoRotate = !controls.autoRotate;
+  spinBtn.setAttribute("aria-pressed", controls.autoRotate ? "true":"false");
+});
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  camera.position.copy(HOME.pos); controls.target.copy(HOME.target); controls.update();
+});
+
+/* part selection */
+const info = document.getElementById("info"), partsEl = document.getElementById("parts");
+const GLOW = lin(0x0a6c8f);
+let selected = null;
+Object.keys(PARTS).filter(k=>k!=="target").forEach(k=>{
+  const b = document.createElement("button");
+  b.type="button"; b.textContent = PARTS[k].n; b.dataset.part = k;
+  b.addEventListener("click", ()=>select(selected===k ? null : k));
+  partsEl.appendChild(b); PARTS[k].btn = b;
+});
+function setGlow(k, on){
+  (PARTS[k].mats||[]).forEach(m=>{ m.emissive.copy(on ? GLOW : (m.userData.base || new C.Color(0))); m.emissiveIntensity = on ? .55 : 1; });
+}
+function select(k){
+  if(selected){ setGlow(selected,false); PARTS[selected].btn.classList.remove("on"); }
+  selected = k;
+  if(!k){
+    info.innerHTML = "<h2>Chọn một bộ phận</h2><p>Chạm vào máy hoặc chọn tên bên dưới để xem bộ phận đó dùng làm gì.</p>";
+    return;
+  }
+  setGlow(k,true); PARTS[k].btn.classList.add("on");
+  info.innerHTML = "";
+  const h=document.createElement("h2"); h.textContent=PARTS[k].n;
+  const p=document.createElement("p"); p.textContent=PARTS[k].d;
+  info.append(h,p);
+}
+
+const ray = new C.Raycaster(), ptr = new C.Vector2();
+const tag = document.getElementById("tag");
+function pick(ev){
+  const r = renderer.domElement.getBoundingClientRect();
+  ptr.set((ev.clientX-r.left)/r.width*2-1, -(ev.clientY-r.top)/r.height*2+1);
+  ray.setFromCamera(ptr, camera);
+  const hit = ray.intersectObject(root, true)[0];
+  return hit ? hit.object.userData.part : null;
+}
+let down = null;
+renderer.domElement.addEventListener("pointerdown", e=>{ down = {x:e.clientX, y:e.clientY}; });
+renderer.domElement.addEventListener("pointerup", e=>{
+  if(!down) return;
+  if(Math.hypot(e.clientX-down.x, e.clientY-down.y) < 6){ const k = pick(e); select(k); if(k==="selector") setScale(!scaleV); if(k==="hzlock") setLock("hz", !locks.hz); if(k==="telclamp") setLock("v", !locks.v); if(k==="eyepiece") openScope("eye"); if(k==="finder") roughAim(); if(k==="microscope") openScope("read"); if(k==="plummet") openScope("plumb"); }
+  down = null;
+});
+renderer.domElement.addEventListener("pointermove", e=>{
+  if(e.pointerType!=="mouse" || e.buttons){ tag.hidden = true; return; }
+  const k = pick(e);
+  renderer.domElement.style.cursor = k ? "pointer" : "grab";
+  if(k){
+    const r = host.getBoundingClientRect();
+    tag.textContent = PARTS[k].n; tag.hidden = false;
+    tag.style.left = (e.clientX-r.left)+"px"; tag.style.top = (e.clientY-r.top)+"px";
+  } else tag.hidden = true;
+});
+renderer.domElement.addEventListener("pointerleave", ()=>{ tag.hidden = true; });
+
+/* ---------- looking through the eyepiece, reading microscope and optical plummet ---------- */
+const scopeEl = document.getElementById("scope"), scopeCv = document.getElementById("scopeCv");
+const sg = scopeCv.getContext("2d"), SW = scopeCv.width, SR = SW/2;
+const scopeTitle = document.getElementById("scopeTitle"), scopeNote = document.getElementById("scopeNote");
+let scopeMode = null;
+const SCOPES = {
+  eye:{t:"Thị kính"},
+  read:{t:"Kính hiển vi đọc số"},
+  plumb:{t:"Kính dọi tâm quang học"}
+};
+function openScope(m){
+  scopeMode = m; scopeEl.hidden = false; scopeTitle.textContent = SCOPES[m].t;
+  if(m==="eye") TARGET.group.visible = true;
+  document.querySelectorAll("[data-scope]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.scope===m));
+}
+function closeScope(){
+  scopeMode = null; scopeEl.hidden = true;
+  document.querySelectorAll("[data-scope]").forEach(b=>b.setAttribute("aria-pressed", false));
+}
+document.getElementById("scopeClose").addEventListener("click", closeScope);
+scopeCv.addEventListener("click", ()=>scopeEl.classList.toggle("big"));
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && scopeMode) closeScope(); });
+document.querySelectorAll("[data-scope]").forEach(b=>b.addEventListener("click", ()=>{
+  scopeMode===b.dataset.scope ? closeScope() : openScope(b.dataset.scope);
+}));
+
+function circleClip(){
+  sg.save(); sg.clearRect(0,0,SW,SW);
+  sg.beginPath(); sg.arc(SR,SR,SR-4,0,Math.PI*2); sg.clip();
+}
+function vignette(){
+  const v = sg.createRadialGradient(SR,SR,SR*.62,SR,SR,SR);
+  v.addColorStop(0,"rgba(0,0,0,0)"); v.addColorStop(1,"rgba(0,0,0,.75)");
+  sg.fillStyle = v; sg.fillRect(0,0,SW,SW);
+  sg.restore();
+  sg.lineWidth = 8; sg.strokeStyle = "#0d0f10"; sg.beginPath(); sg.arc(SR,SR,SR-4,0,Math.PI*2); sg.stroke();
+}
+
+/* telescope view: perspective projection along the telescope's line of sight */
+const EYE_FOV = 4 * Math.PI/180;
+const telInv = new C.Matrix4(), _v = new C.Vector3(), _o = new C.Vector3();
+function proj(p){
+  _v.copy(p).applyMatrix4(telInv);
+  if(_v.z > -1e-3) return null;
+  const k = SR / Math.tan(EYE_FOV/2);
+  return {x: SR + (_v.x/-_v.z)*k, y: SR - (_v.y/-_v.z)*k};
+}
+function quad(pts, color){
+  const q = pts.map(proj); if(q.some(p=>!p)) return;
+  sg.fillStyle = color; sg.beginPath(); sg.moveTo(q[0].x,q[0].y);
+  for(let i=1;i<4;i++) sg.lineTo(q[i].x,q[i].y); sg.closePath(); sg.fill();
+}
+/* deterministic noise for scenery */
+function hash(n){ const s = Math.sin(n*127.1)*43758.5453; return s - Math.floor(s); }
+function drawLandscape(A, e, kd){
+  /* A: view azimuth (rad), e: elevation of line of sight (deg), kd: px per degree */
+  const hy = SR + e*kd;                         // horizon in an upright frame
+  const azAt = x => A + ((x-SR)/kd)*Math.PI/180;
+  const sky = sg.createLinearGradient(0, hy-4*kd, 0, hy);
+  sky.addColorStop(0,"#7fa9cf"); sky.addColorStop(.7,"#b7d0e3"); sky.addColorStop(1,"#dfe8ea");
+  sg.fillStyle = sky; sg.fillRect(0,0,SW,SW);
+  /* clouds: soft ellipses fixed in azimuth */
+  const a0 = A*180/Math.PI - SR/kd, a1 = A*180/Math.PI + SR/kd;
+  for(let i=Math.floor(a0/1.3)-1; i<=Math.ceil(a1/1.3)+1; i++){
+    const az = i*1.3 + hash(i)*0.9, el = 1.4 + hash(i+7)*2.2;
+    if(hash(i+3) < .45) continue;
+    const x = SR + (az - A*180/Math.PI)*kd, y = hy - el*kd, w = (0.5+hash(i+11)*.9)*kd;
+    sg.fillStyle = "rgba(255,255,255,.75)";
+    for(let j=0;j<4;j++){ sg.beginPath(); sg.ellipse(x + (j-1.5)*w*.45, y + Math.sin(j*1.7)*w*.06, w*.42, w*.16, 0, 0, Math.PI*2); sg.fill(); }
+  }
+  const ridge = (fn, color, haze) => {
+    sg.fillStyle = color; sg.beginPath(); sg.moveTo(-4, hy+2);
+    for(let x=-4; x<=SW+4; x+=3){ sg.lineTo(x, hy - fn(azAt(x))*kd); }
+    sg.lineTo(SW+4, hy+2); sg.closePath(); sg.fill();
+    if(haze){ const g = sg.createLinearGradient(0, hy-1.2*kd, 0, hy); g.addColorStop(0,"rgba(220,232,238,0)"); g.addColorStop(1,"rgba(220,232,238,"+haze+")"); sg.fillStyle = g; sg.fill(); }
+  };
+  /* far mountains, mid hills */
+  ridge(MOUNT_DEG, "#8ea7bb", .55);
+  ridge(HILL_DEG, "#6f8f6a", .3);
+  /* grassy edge along the horizon */
+  ridge(a => .006 + .002*Math.sin(450*a) + .0015*Math.sin(1300*a+1), "#6c8f4b", 0);
+  /* fields below the horizon */
+  const g = sg.createLinearGradient(0, hy, 0, hy + 3*kd);
+  g.addColorStop(0,"#8aa564"); g.addColorStop(.4,"#7d9a55"); g.addColorStop(1,"#5e7c3f");
+  sg.fillStyle = g; sg.fillRect(-4, hy, SW+8, SW);
+  sg.strokeStyle = "rgba(70,95,45,.35)"; sg.lineWidth = 1.2;
+  for(let i=1;i<14;i++){ const y = hy + Math.pow(i/14, 2)*3*kd; sg.beginPath(); sg.moveTo(-4,y); sg.lineTo(SW+4,y); sg.stroke(); }
+}
+function poly(pts, color){
+  const q = pts.map(proj); if(q.some(p=>!p)) return null;
+  sg.fillStyle = color; sg.beginPath(); sg.moveTo(q[0].x,q[0].y);
+  for(let i=1;i<q.length;i++) sg.lineTo(q[i].x,q[i].y); sg.closePath(); sg.fill();
+  return q;
+}
+function drawEye(){
+  tel.updateMatrixWorld(true);
+  telInv.copy(tel.matrixWorld).invert();
+  tel.getWorldPosition(_o);
+  const tq = tel.getWorldQuaternion(new C.Quaternion());
+  const f = new C.Vector3(0,0,-1).applyQuaternion(tq), up = new C.Vector3(0,1,0).applyQuaternion(tq);
+  const kd = SR / Math.tan(EYE_FOV/2) * Math.PI/180;
+  circleClip();
+  sg.save();
+  if(up.y < 0){ sg.translate(SR,SR); sg.rotate(Math.PI); sg.translate(-SR,-SR); }
+  drawLandscape(Math.atan2(f.x, -f.z), Math.asin(Math.max(-1, Math.min(1, f.y)))*180/Math.PI, kd);
+  sg.restore();
+  /* round sector target: red and white quadrants, black yoke, socket and wooden pole */
+  const T = TARGET, toT = new C.Vector3(T.x - _o.x, 0, T.z - _o.z).normalize();
+  const n = toT.clone().negate(), r = new C.Vector3(-n.z, 0, n.x), U = new C.Vector3(0,1,0);
+  const c0 = new C.Vector3(T.x, T.y, T.z), c = c0.clone().addScaledVector(n, .2);
+  const P = (sx, sy, base=c) => base.clone().addScaledVector(r, sx).addScaledVector(U, sy);
+  const side = r.clone().multiplyScalar(T.poleR), pb = new C.Vector3(T.x, 0, T.z);
+  poly([pb.clone().add(side).setY(T.floor), pb.clone().sub(side).setY(T.floor), pb.clone().sub(side).setY(T.poleTop+.2), pb.clone().add(side).setY(T.poleTop+.2)], "#7a6a4a");
+  const sy0 = -T.yokeR;
+  poly([P(-.65,sy0-T.stemH,c0),P(.65,sy0-T.stemH,c0),P(.6,sy0,c0),P(-.6,sy0,c0)], "#151515");
+  const arc = (rad, a0, a1, steps=40) => Array.from({length:steps+1}, (_,i)=>{ const a = a0+(a1-a0)*i/steps; return P(Math.cos(a)*rad, Math.sin(a)*rad, c0); });
+  const outer = arc(T.yokeR+.32, Math.PI, 2*Math.PI), inner = arc(T.yokeR-.32, 2*Math.PI, Math.PI);
+  poly(outer.concat(inner), "#151515");
+  for(const sx of [-1,1]) poly([P(sx*(T.yokeR-.9),-.55,c0),P(sx*(T.yokeR+.45),-.55,c0),P(sx*(T.yokeR+.45),.55,c0),P(sx*(T.yokeR-.9),.55,c0)], "#151515");
+  const wedge = (a0, a1, col) => poly([c].concat(Array.from({length:17}, (_,i)=>{ const a = a0+(a1-a0)*i/16; return P(Math.cos(a)*T.half, Math.sin(a)*T.half); })), col);
+  poly(arc(T.half+.12, 0, 2*Math.PI, 64).map(p=>p.addScaledVector(n,.25)), "#1a1a1a");
+  const q = Math.PI/4;
+  wedge(-q, q, "#c4231c"); wedge(q, 3*q, "#f6f4ec"); wedge(3*q, 5*q, "#c4231c"); wedge(5*q, 7*q, "#f6f4ec");
+  /* reticle: crosshairs and stadia lines */
+  sg.strokeStyle = "#0b0b0b"; sg.lineWidth = 4.5;
+  sg.beginPath(); sg.moveTo(SR,0); sg.lineTo(SR,SW); sg.moveTo(0,SR); sg.lineTo(SW,SR); sg.stroke();
+  sg.beginPath();
+  for(const dy of [-.33,.33]){ sg.moveTo(SR-60, SR+dy*SR); sg.lineTo(SR+60, SR+dy*SR); }
+  sg.stroke();
+  vignette();
+  const dh = proj(c);
+  const onTarget = dh && Math.hypot(dh.x-SR, dh.y-SR) < 6;
+  scopeNote.textContent = onTarget ? "Dây chữ thập đã vào tâm tiêu A."
+    : "Tiêu A ở hướng Hz ≈ " + (Math.round(TARGET.hz) % 360) + "°, V ≈ " + Math.round(TARGET.v) + "°. Bấm Ngắm sơ bộ để đưa tiêu vào trường ngắm.";
+}
+
+/* reading microscope: scale microscope, 1′ graduations, degree line moves over the scale */
+function fmtMin(deg){
+  const d = Math.floor(deg+1e-9), m = (deg - d)*60;
+  return d+"°"+m.toFixed(1).replace(".",",")+"′";
+}
+function scaleWindow(y, deg, on, below){
+  /* below=false (V): degree number above the scale; below=true (Hz): degree number under the scale */
+  const x0 = 105, x1 = 495, w = x1-x0, H = 130;
+  sg.fillStyle = on ? "#f1e7c4" : "#15130e";
+  sg.fillRect(x0-25, y, w+50, H);
+  if(!on) return;
+  sg.strokeStyle = "#1a160a"; sg.fillStyle = "#1a160a";
+  const base = below ? y+48 : y+H-48, dir = below ? 1 : -1;   // ticks grow toward the degree number
+  sg.lineWidth = 2; sg.beginPath(); sg.moveTo(x0, base); sg.lineTo(x1, base); sg.stroke();
+  sg.textAlign = "center"; sg.textBaseline = "middle"; sg.font = "600 26px 'JetBrains Mono', monospace";
+  for(let m=0;m<=60;m++){
+    const x = x0 + w*m/60, len = m%10===0 ? 22 : m%5===0 ? 15 : 9;
+    sg.lineWidth = m%10===0 ? 3.2 : 2;
+    sg.beginPath(); sg.moveTo(x, base); sg.lineTo(x, base + dir*len); sg.stroke();
+    if(m%10===0) sg.fillText(String(m/10), x, base - dir*22);
+  }
+  const d = Math.floor(deg+1e-9), mm = (deg-d)*60, xd = x0 + w*mm/60;
+  const numY = below ? y+H-18 : y+18;
+  sg.strokeStyle = "#111"; sg.lineWidth = 2;
+  sg.beginPath(); sg.moveTo(xd, base - dir*4); sg.lineTo(xd, numY - dir*18); sg.stroke();
+  sg.fillStyle = "#111"; sg.font = "700 32px 'JetBrains Mono', monospace";
+  sg.fillText(String(d), Math.min(Math.max(xd, x0+20), x1-20), numY);
+}
+function drawRead(){
+  circleClip();
+  sg.fillStyle = "#0e0d0a"; sg.fillRect(0,0,SW,SW);
+  const hz = ((+hzIn.value % 360)+360)%360, v = ((+vzIn.value % 360)+360)%360;
+  scaleWindow(138, v, scaleV, false);
+  scaleWindow(318, hz, true, true);
+  sg.fillStyle = "#d9cfa6"; sg.font = "700 30px 'JetBrains Mono', monospace"; sg.textAlign = "center"; sg.textBaseline = "middle";
+  if(scaleV) sg.fillText("V", SR, 114);
+  sg.fillText("Hz", SR, 474);
+  const dark = 1 - Math.max(.08, lightPct/100);
+  sg.fillStyle = `rgba(0,0,0,${(dark*.9).toFixed(3)})`; sg.fillRect(0,0,SW,SW);
+  vignette();
+  let msg = "Hz = "+fmtMin(hz) + (scaleV ? "    V = "+fmtMin(v) : "");
+  if(lightPct < 30) msg += ". Bàn độ tối: chỉnh gương lấy sáng.";
+  scopeNote.textContent = msg;
+}
+
+/* optical plummet: looks straight down the vertical axis onto the control mark */
+function drawPlumb(){
+  circleClip();
+  const k = SR/13; // px per cm at the ground
+  sg.fillStyle = "#6f6a5f"; sg.fillRect(0,0,SW,SW);
+  for(let i=0;i<500;i++){ const g = 90+((i*73)%60); sg.fillStyle = `rgba(${g},${g-4},${g-12},.35)`; sg.fillRect((i*137)%SW, (i*251)%SW, 4, 4); }
+  sg.save(); sg.translate(SR,SR); sg.rotate(C.MathUtils.degToRad(+hzIn.value));
+  sg.fillStyle = "#a3a29b"; sg.fillRect(-10.2*k, -10.2*k, 20.4*k, 20.4*k);
+  sg.strokeStyle = "#5a5953"; sg.lineWidth = 3; sg.strokeRect(-10.2*k, -10.2*k, 20.4*k, 20.4*k);
+  sg.fillStyle = "#b9bec2"; sg.beginPath(); sg.arc(0,0,2.4*k,0,Math.PI*2); sg.fill();
+  sg.strokeStyle = "#6c7378"; sg.lineWidth = 3; sg.stroke();
+  sg.strokeStyle = "#15171a"; sg.lineWidth = 3;
+  sg.beginPath(); sg.moveTo(-1.7*k,0); sg.lineTo(1.7*k,0); sg.moveTo(0,-1.7*k); sg.lineTo(0,1.7*k); sg.stroke();
+  sg.fillStyle = "#4b4a46"; sg.font = "700 30px 'Be Vietnam Pro', Arial, sans-serif"; sg.textAlign = "center";
+  sg.fillText("ĐC-01", 0, 6.4*k);
+  sg.font = "700 34px 'Be Vietnam Pro', Arial, sans-serif";
+  sg.fillText("MỐC TỌA ĐỘ", 0, -5.6*k);
+  sg.restore();
+  sg.strokeStyle = "#101010"; sg.lineWidth = 2;
+  sg.beginPath(); sg.arc(SR,SR,.9*k,0,Math.PI*2); sg.stroke();
+  sg.beginPath(); sg.arc(SR,SR,1.5*k,0,Math.PI*2); sg.stroke();
+  vignette();
+  scopeNote.textContent = "Tâm vòng tròn trùng tâm mốc: máy đã dọi tâm.";
+}
+/* rough aiming through the finder: brings the target into the field, leaving the fine pointing to the student */
+function roughAim(){
+  if(locks.hz) setLock("hz", false);
+  if(locks.v) setLock("v", false);
+  const off = () => (Math.random()<.5?-1:1)*(.25 + Math.random()*.55);
+  hzIn.value = (((TARGET.hz + off()) % 360) + 360) % 360;
+  vzIn.value = TARGET.v + off()*.7;
+  updateAngles();
+  openScope("eye");
+}
+document.getElementById("roughAim").addEventListener("click", roughAim);
+function drawScope(){
+  if(scopeMode==="eye") drawEye(); else if(scopeMode==="read") drawRead(); else if(scopeMode==="plumb") drawPlumb();
+}
+
+/* sizing + loop */
+function resize(){
+  const w = host.clientWidth, h = host.clientHeight;
+  if(!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w/h;
+  camera.fov = w/h < .9 ? 50 : 38;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(host); resize();
+
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function loop(){
+  const tNow = performance.now()/1000;
+  for(const b of BIRDS){
+    const u = b.userData, a = u.a + u.w*tNow;
+    b.position.set(u.r*Math.sin(a), u.y + 8*Math.sin(tNow*.7 + u.ph), -u.r*Math.cos(a));
+    b.rotation.y = -a + (u.w > 0 ? Math.PI/2 : -Math.PI/2);
+    const flap = reduce ? .2 : Math.sin(tNow*u.f + u.ph)*.55;
+    u.L.rotation.z = flap; u.R.rotation.z = -flap;
+  }
+  selAngle += (selTarget - selAngle) * (reduce ? 1 : .15);
+  selKnob.rotation.x = selAngle;
+  telLever.rotation.x += ((locks.v ? -.32 : 0) - telLever.rotation.x) * (reduce ? 1 : .2);
+  hzLever.rotation.x += ((locks.hz ? .32 : 0) - hzLever.rotation.x) * (reduce ? 1 : .2);
+  if(lightDirty || spinVV){ checkLight(); lightDirty = false; }
+  if(spinVV || spinHH){
+    if(spinVV) hzIn.value = ((+hzIn.value + .35) % 360).toFixed(2);
+    if(spinHH) vzIn.value = ((+vzIn.value + .5) % 360).toFixed(2);
+    updateAngles();
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  if(scopeMode) drawScope();
+  requestAnimationFrame(loop);
+}
+loop();
+})();
+</script>
+
+</body>
+</html>
